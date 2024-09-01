@@ -1,0 +1,102 @@
+cache:
+  paths:
+    - ${CI_PROJECT_DIR}/.m2/repository
+
+variables:
+  VERSION: 1.0.${CI_PIPELINE_ID}
+  MAVEN_REPO_PATH: ${CI_PROJECT_DIR}/.m2/repository
+  JAVA_OPTS: -XX:MaxRAMPercentage=90 # для того, чтобы Maven не съел всю свободную оперативку
+  SPRING_FLYWAY_ENABLED: "false"
+
+stages:
+  - build
+  - release
+  - deploy
+
+build-backend-code-job:
+  stage: build  
+  # only:
+  #   changes:
+  #     - backend/**/*
+  #   variables:
+  #     - $CI_COMMIT_MESSAGE =~ /send notification/
+  rules: # rules и only в данных случаях взаимозаменяемы
+    - changes:
+      - backend/**/*
+  image:
+    name: gcr.io/kaniko-project/executor:v1.9.0-debug
+    entrypoint: [""]
+  # переменные CI_REGISTRY_USER, CI_REGISTRY_PASSWORD, CI_REGISTRY генерятся Гитлабом, их задавать не надо
+  script:
+    - /kaniko/executor
+      --context "${CI_PROJECT_DIR}/backend"
+      --dockerfile "${CI_PROJECT_DIR}/backend/Dockerfile"
+      --destination "${CI_REGISTRY_IMAGE}/sausage-backend:${VERSION}"
+      --build-arg VERSION=${VERSION}
+      --cache=true
+
+  artifacts:
+    paths:
+      - backend/target/sausage-store-${VERSION}.jar
+      - ${CI_PROJECT_DIR}/.m2/ 
+
+release:
+  variables:
+    GIT_STRATEGY: none
+  image:
+    name: gcr.io/go-containerregistry/crane:debug
+    entrypoint: [ "" ]
+  cache: [ ]
+  stage: release
+  before_script:
+    - crane auth login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - echo ${VERSION}
+    - crane tag $CI_REGISTRY_IMAGE/sausage-backend:${VERSION} latest
+
+deploy-backend:
+  stage: deploy
+  image: docker:24.0.7-alpine3.19
+  before_script:
+    - apk add openssh-client bash docker-compose jq
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add -
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
+    - docker context create --docker "host=ssh://student@std-028-65.praktikum-services.tech" remote
+  script:
+    - docker context use remote
+
+    - docker-compose --context remote up -d --force-recreate backend-blue
+    - docker-compose --context remote up -d --force-recreate backend-green
+    
+    - blue_status=$(docker --context remote container inspect  --format "{{json .State.Health }}" backend-blue | jq -r '.Status') || true
+    - green_status=$(docker --context remote container inspect  --format "{{json .State.Health }}" backend-green | jq -r '.Status') || true
+    - echo $blue_status
+    - echo $green_status
+    - >
+      if [ "$blue_status" == 'healthy' ]; then
+          docker-compose --context remote pull backend-green
+          docker-compose --context remote up -d --force-recreate backend-green
+          while [ $(docker --context remote container inspect --format "{{json .State.Health }}" backend-green | jq -r '.Status') != 'healthy' ]
+          do
+              sleep 5
+          done
+          docker-compose --context remote stop backend-blue
+          echo "Deploy GREEN succesfully"
+      else
+          docker-compose --context remote pull backend-blue
+          docker-compose --context remote up -d --force-recreate backend-blue
+          while [ $(docker --context remote container inspect  --format "{{json .State.Health }}" backend-blue | jq -r '.Status') != 'healthy' ]
+          do
+              sleep 5
+          done
+          docker-compose --context remote stop backend-green
+          echo "Deploy BLUE succesfully"
+      fi
+
+
+

@@ -1,0 +1,9 @@
+#cloud-config
+ssh_pwauth: false
+users:
+  - name: ansible
+    groups: users,admin,wheel
+    shell: /bin/bash
+    sudo: 'ALL=(ALL) NOPASSWD:ALL'
+    ssh-authorized-keys: 
+    - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQDcnSATK1kHudQRZ3oUBiq3UdtActvkOyrDhp1kgN/8pMJBwfHNk9lusjTiiGGDnP8n+UZ86DYqc9BQaOjF9Sg5kT657MuVzq2J4CXeba67ZrBtBDi0FZ0dyU15riFbJMAhgJ1I9NIERqWvvV3Y+uTPxgf3v20EiGdEizxK9Kog/LgiE1aZitzI0qEac9nxaGBW5Ck0Nyrg1WdoWsiYGuQP1ayIkVgSQo0FeQf+uklR8ArJUhCKs7SjqPDOtiVq8BIIp+J9RuokrNnR4N27NeowcRNfeGd9DHI97Owa+PyfkuOF36FJ25ylwPjZGkg3YVKmDJTju1cCIKJ1NSe6wZcyxnDAjySpId3k9hUeVZDe+nndIhFZZpkecFt7ZFU3xUOBSeQBI0kJTb/hwwvfQEsZLwDmSJyYr1rZNIq31xoQDak/kdnytcVZrMhVZc2lKQHPCXcn0o+r5njn4yCHqEFriMalOnvZGInpmmYVOT7dZpBX94hpAeqaGH+HoEoGicU= student@fhmmlhe46hr4uo3ur4fk

@@ -1,0 +1,17 @@
+backendreport:
+  image: gitlab.praktikum-services.ru:5050/std-028-65/sausage-store/sausage-backend-report
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5000
+
+imagePullSecrets: 
+  name: docker-config-secret
+
+autoscaling:
+  hpa:
+    minReplicas: 2
+    maxReplicas: 5
+    averageUtilization: 75

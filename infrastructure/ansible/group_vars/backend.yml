@@ -1,0 +1,14 @@
+backend_maven_version: 	1.0.1219455
+backend_report_directory: /var/sausage-store/reports
+backend_lib_directory: /opt/sausage-store/lib
+backend_service_user: backend
+backend_log: /opt/log/sausage-store-backend.log
+backend_NEXUS_REPO_URL: https://nexus.praktikum-services.tech/repository
+backend_NEXUS_REPO_PASS: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          65363037383138303832333835613932316435336364633465343538353066623531336565373335
+          3335393562303231666161306463623464356162313837610a316263663236376138383939396536
+          64653164666133396431663466613132326531376665653863363763383930363865383962343462
+          3035636564646166380a613861653731616462386235333139316631323534306334616163636138
+          3032
+backend_NEXUS_REPO_USER: std-028-65

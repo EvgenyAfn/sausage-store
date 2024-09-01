@@ -1,0 +1,8 @@
+all:
+  children:
+    backend:
+      hosts:
+        51.250.78.78:
+    frontend:
+      hosts:
+        51.250.78.78:

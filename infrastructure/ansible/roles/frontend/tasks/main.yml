@@ -1,0 +1,81 @@
+---
+# tasks file for frontend
+# tasks file for backend
+# В нашей автоматизации список из четырёх задач
+- name: Install Dependencies
+  apt:
+    name: ['npm', 'nodejs'] 
+    state: latest
+    update_cache: yes
+
+- name: Install http-server
+  npm: 
+    name: http-server
+    global: yes
+
+- name: Добавим сервисного пользователя
+  user:
+    name: "{{ frontend_service_user }}"
+    create_home: no
+    shell: /sbin/nologin
+  
+- name: Creates directory
+  ansible.builtin.file:
+    path: "{{ frontend_lib_directory }}"
+    owner: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_user }}"
+
+
+- name: Download artifact
+  ansible.builtin.get_url:
+    url: "{{ NEXUS_REPO_URL }}/{{ NEXUS_REPO_FRONTEND_NAME }}/{{ VERSION }}/sausage-store-{{ VERSION }}.tar.gz"
+    dest: "{{ frontend_lib_directory }}"
+    password: "{{ NEXUS_REPO_PASS }}"
+    username: "{{ NEXUS_REPO_USER }}"
+    owner: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_user }}"
+
+#- n  ame: Change file permission
+#  file:
+#    path: "/home/ansible/sausage-store-{{ VERSION }}.tar.gz"
+#    owner: "ansible"
+#    group: "ansible"
+
+
+- name: Extract artifact
+  ansible.builtin.unarchive:
+    src: "{{ frontend_lib_directory }}/sausage-store-{{ VERSION }}.tar.gz"
+    dest: "{{ frontend_lib_directory }}"
+    remote_src: yes
+    owner: "{{ frontend_service_user }}"
+    group: "{{ frontend_service_user }}"
+
+- name: Change directory permission
+  file:
+    path: "{{ frontend_lib_directory }}"
+    group: "{{ frontend_service_user }}"
+    owner: "{{ frontend_service_user }}"
+    state: directory
+    mode: "0755"
+
+- name: Set CAP_NET_BIND_SERVICE+ep on /foo
+  community.general.capabilities:
+    path: /usr/bin/node 
+    capability: CAP_NET_BIND_SERVICE=+eip
+    state: present
+
+
+- name: Шаблонизация конфига управляет настройками приложения с помощью переменных
+  template:
+    src: sausage-store-frontend.service.j2
+    dest: /etc/systemd/system/sausage-store-frontend.service
+
+- name: Перечитываем конфигурацию systemd
+  systemd:
+    daemon_reload: yes
+
+- name: всё готово - запускаем!
+  service:
+    name: sausage-store-frontend.service
+    enabled: yes
+    state: started 

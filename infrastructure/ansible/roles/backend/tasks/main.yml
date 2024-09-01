@@ -1,0 +1,53 @@
+---
+# tasks file for backend
+# В нашей автоматизации список из четырёх задач
+- name: Install Dependencies
+  apt:
+    name: ['python3-pip', 'python3-setuptools', 'python3.8', 'python3.8-venv', 'openjdk-16-jdk'] 
+    state: latest
+    update_cache: yes
+
+- name: Install lxml
+  pip: name=lxml
+
+- name: Creates directory
+  ansible.builtin.file:
+    path: "{{ backend_lib_directory }}"
+    state: directory
+
+- name: Добавим сервисного пользователя
+  user:
+    name: "{{ backend_service_user }}"
+    create_home: no
+    shell: /sbin/nologin
+  
+- name: Шаблонизация конфига управляет настройками приложения с помощью переменных
+  template:
+    src: sausage-store-backend.service.j2
+    dest: /etc/systemd/system/sausage-store-backend.service
+
+- name: Используем модуль maven_artifact, он скачает пакет приложения с Nexus
+  maven_artifact:
+    dest: "/opt/sausage-store/lib/sausage-store.jar"
+    repository_url: "https://nexus.praktikum-services.tech/repository/std-028-65_backend/"
+    group_id: "com.yandex.practicum.devops"
+    artifact_id: "sausage-store"
+    version: "{{ backend_maven_version }}"
+    password: "{{ backend_NEXUS_REPO_PASS }}"
+    username: "{{ backend_NEXUS_REPO_USER }}"
+
+- name: Change file permission
+  file:
+    path: "/opt/sausage-store/lib/sausage-store.jar"
+    owner: "{{ backend_service_user }}"
+    group: "{{ backend_service_user }}"
+
+- name: Перечитываем конфигурацию systemd
+  systemd:
+    daemon_reload: yes
+
+- name: всё готово - запускаем!
+  service:
+    name: sausage-store-backend.service
+    enabled: yes
+    state: started 

@@ -1,0 +1,5 @@
+---
+# vars file for backend
+frontend_service_user: www-data
+frontend_lib_directory: /var/www-data
+NEXUS_REPO_FRONTEND_NAME: std-028-65_frontend
